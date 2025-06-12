@@ -7,11 +7,14 @@
 
 import SwiftUI
 
+
+// MARK: - Main App
 @main
 struct WyaApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .preferredColorScheme(.dark)
         }
     }
 }
