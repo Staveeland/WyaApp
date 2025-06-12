@@ -103,7 +103,8 @@ class CloudKitLocationManager: ObservableObject {
         let share = CKShare(rootRecord: record)
         share[CKShare.SystemFieldKey.title] = "Wya Location"
 
-        let operation = CKModifyRecordsOperation(recordsToSave: [record, share], recordIDsToDelete: nil)
+        let operation = CKModifyRecordsOperation(recordsToSave: [record, share],
+                                                 recordIDsToDelete: nil)
         operation.modifyRecordsCompletionBlock = { [weak self] _, _, error in
             if let ckError = error as? CKError, ckError.code == .zoneBusy {
                 let delay = (ckError.userInfo[CKErrorRetryAfterKey] as? TimeInterval) ?? 2.0
@@ -144,21 +145,39 @@ class CloudKitLocationManager: ObservableObject {
             }
 
             let op = CKAcceptSharesOperation(shareMetadatas: [metadata])
-            op.perShareCompletionBlock = { (metadata: CKShare.Metadata, share: CKShare?, error: Error?) in
+
+            op.perShareCompletionBlock = { [weak self] meta, share, error in
                 if let error = error {
                     print("Share failed: \(error)")
                 } else {
-                    print("Share accepted for root record: \(metadata.rootRecordID.recordName)")
+                    print("Share accepted for root record: \(meta.rootRecordID.recordName)")
+                    if let share = share {
+                        DispatchQueue.main.async { self?.share = share }
+                    }
                 }
             }
 
-            op.acceptSharesCompletionBlock = { error in
+            op.acceptSharesCompletionBlock = { [weak self] error in
                 if let error = error {
                     print("Accept shares failed: \(error)")
                     completion(false)
-                } else {
-                    print("Share accepted successfully 🎉")
-                    completion(true)
+                    return
+                }
+
+                print("Share accepted successfully 🎉")
+
+                // Fetch the shared location record from the shared database
+                let sharedDB = self?.container.sharedCloudDatabase
+                sharedDB?.fetch(withRecordID: metadata.rootRecordID) { record, fetchError in
+                    if let record = record {
+                        DispatchQueue.main.async {
+                            self?.locationRecord = record
+                        }
+                        completion(true)
+                    } else {
+                        print("Failed to fetch shared record: \(String(describing: fetchError))")
+                        completion(false)
+                    }
                 }
             }
 
