@@ -13,7 +13,9 @@ struct InviteView: UIViewControllerRepresentable {
         } else {
             let controller = UICloudSharingController { _, preparationCompletion in
                 manager.createShare { share in
-                    preparationCompletion(share, manager.container, nil)
+                    DispatchQueue.main.async {
+                        preparationCompletion(share, manager.container, nil)
+                    }
                 }
             }
             controller.delegate = context.coordinator
