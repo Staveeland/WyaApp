@@ -89,15 +89,26 @@ class WyaViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var showingAddPerson = false
     @Published var locationAlerts: [LocationAlert] = []
 
+    private weak var session: UserSession?
     let locationManager = CLLocationManager()
     private var cancellables = Set<AnyCancellable>()
 
-    override init() {
+    init(session: UserSession) {
+        self.session = session
         super.init()
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
         locationManager.requestWhenInUseAuthorization()
         locationManager.startUpdatingLocation()
+
+        loadLocalData()
+
+        if let id = session.userID {
+            CloudKitUserDataManager.shared.fetch(userID: id) { [weak self] people, alerts in
+                self?.people = people
+                self?.locationAlerts = alerts
+            }
+        }
 
         CloudKitLocationManager.shared.$locationRecord
             .compactMap { $0 }
@@ -141,10 +152,12 @@ class WyaViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     
     func addPerson(_ person: Person) {
         people.append(person)
+        saveData()
     }
-    
+
     func deletePerson(_ person: Person) {
         people.removeAll { $0.id == person.id }
+        saveData()
     }
     
     func centerOnPerson(_ person: Person) {
@@ -174,13 +187,42 @@ class WyaViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
                                   recordName: recordID)
             people.append(newPerson)
         }
+        saveData()
+    }
+
+    private func loadLocalData() {
+        if let peopleData = UserDefaults.standard.data(forKey: "people"),
+           let storedPeople = try? JSONDecoder().decode([Person].self, from: peopleData) {
+            people = storedPeople
+        }
+        if let alertData = UserDefaults.standard.data(forKey: "alerts"),
+           let storedAlerts = try? JSONDecoder().decode([LocationAlert].self, from: alertData) {
+            locationAlerts = storedAlerts
+        }
+    }
+
+    private func saveData() {
+        if let peopleData = try? JSONEncoder().encode(people) {
+            UserDefaults.standard.set(peopleData, forKey: "people")
+        }
+        if let alertData = try? JSONEncoder().encode(locationAlerts) {
+            UserDefaults.standard.set(alertData, forKey: "alerts")
+        }
+        if let id = session?.userID, let name = session?.userName {
+            CloudKitUserDataManager.shared.save(userID: id, name: name, people: people, alerts: locationAlerts)
+        }
     }
 }
 
 // MARK: - Content View
 struct ContentView: View {
-    @StateObject private var viewModel = WyaViewModel()
+    @EnvironmentObject var session: UserSession
+    @StateObject private var viewModel: WyaViewModel
     @State private var selectedTab = 0
+
+    init(session: UserSession) {
+        _viewModel = StateObject(wrappedValue: WyaViewModel(session: session))
+    }
     
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -635,7 +677,9 @@ struct AddPersonView: View {
 // MARK: - Preview
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView()
+        let session = UserSession()
+        ContentView(session: session)
+            .environmentObject(session)
             .preferredColorScheme(.dark)
     }
 }

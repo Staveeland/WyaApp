@@ -12,6 +12,7 @@ import UIKit
 // MARK: - Main App
 @main
 struct WyaApp: App {
+    @StateObject private var session = UserSession()
     init() {
         let appearance = UITabBarAppearance()
         appearance.configureWithOpaqueBackground()
@@ -25,11 +26,17 @@ struct WyaApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .preferredColorScheme(.dark)
-                .onOpenURL { url in
-                    CloudKitLocationManager.shared.acceptShare(from: url) { _ in }
-                }
+            if session.isSignedIn {
+                ContentView(session: session)
+                    .environmentObject(session)
+                    .preferredColorScheme(.dark)
+                    .onOpenURL { url in
+                        CloudKitLocationManager.shared.acceptShare(from: url) { _ in }
+                    }
+            } else {
+                SignInView()
+                    .environmentObject(session)
+            }
         }
     }
 }
