@@ -402,9 +402,8 @@ struct PersonCard: View {
 // MARK: - People List View
 struct PeopleListView: View {
     @EnvironmentObject var viewModel: WyaViewModel
-    @State private var showingAddPerson = false
     @State private var showingInvite = false
-    
+
     var body: some View {
         NavigationView {
             List {
@@ -423,23 +422,24 @@ struct PeopleListView: View {
             .navigationTitle("Your People")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: { showingInvite = true }) {
+                    Button(action: {
+                        print("Invite tapped")
+                        CloudKitLocationManager.shared.createShare { share, error in
+                            if let share = share {
+                                print("Share ready, showing sheet")
+                                DispatchQueue.main.async {
+                                    showingInvite = true
+                                }
+                            } else {
+                                print("Share creation failed: \(String(describing: error))")
+                            }
+                        }
+                    }) {
                         Image(systemName: "person.badge.plus")
                             .font(.title2)
                     }
                 }
-
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showingAddPerson = true }) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title2)
-                    }
-                }
             }
-        }
-        .sheet(isPresented: $showingAddPerson) {
-            AddPersonView()
-                .environmentObject(viewModel)
         }
         .sheet(isPresented: $showingInvite) {
             InviteView()
