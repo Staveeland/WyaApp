@@ -424,14 +424,9 @@ struct PeopleListView: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
                         print("Invite tapped")
-                        CloudKitLocationManager.shared.createShare { share, error in
-                            if let share = share {
-                                print("Share ready, showing sheet")
-                                DispatchQueue.main.async {
-                                    showingInvite = true
-                                }
-                            } else {
-                                print("Share creation failed: \(String(describing: error))")
+                        CloudKitLocationManager.shared.prepareShare { share in
+                            if share != nil {
+                                showingInvite = true
                             }
                         }
                     }) {
@@ -444,6 +439,12 @@ struct PeopleListView: View {
         .sheet(isPresented: $showingInvite) {
             InviteView()
                 .environmentObject(viewModel)
+        }
+        .alert(isPresented: Binding<Bool>(
+            get: { CloudKitLocationManager.shared.lastError != nil },
+            set: { _ in CloudKitLocationManager.shared.lastError = nil }
+        )) {
+            Alert(title: Text("Error"), message: Text(CloudKitLocationManager.shared.lastError?.localizedDescription ?? "Unknown error"), dismissButton: .default(Text("OK")))
         }
     }
 }

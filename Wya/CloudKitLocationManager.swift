@@ -10,6 +10,7 @@ class CloudKitLocationManager: ObservableObject {
     let sharedZone = CKRecordZone(zoneName: "SharedZone")
     @Published private(set) var share: CKShare?
     @Published private(set) var locationRecord: CKRecord?
+    @Published var lastError: Error?
 
     private init() {
         container = CKContainer.default()
@@ -17,7 +18,7 @@ class CloudKitLocationManager: ObservableObject {
         createLocationRecordIfNeeded()
     }
 
-    private func createLocationRecordIfNeeded() {
+    func createLocationRecordIfNeeded() {
         let zone = CKRecordZone(zoneName: "SharedZone")
         let recordID = CKRecord.ID(recordName: "MyLocation", zoneID: zone.zoneID)
 
@@ -64,6 +65,33 @@ class CloudKitLocationManager: ObservableObject {
         record["lat"] = location.latitude
         record["lon"] = location.longitude
         privateDB.save(record) { _, _ in }
+    }
+
+    func prepareShare(completion: @escaping (CKShare?) -> Void) {
+        if locationRecord != nil {
+            createShare { share, error in
+                DispatchQueue.main.async {
+                    if let error = error { self.lastError = error }
+                    completion(share)
+                }
+            }
+            return
+        }
+
+        createLocationRecordIfNeeded()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+            guard let self = self, self.locationRecord != nil else {
+                self?.lastError = NSError(domain: "Record creation failed", code: 2)
+                completion(nil)
+                return
+            }
+            self.createShare { share, error in
+                DispatchQueue.main.async {
+                    if let error = error { self.lastError = error }
+                    completion(share)
+                }
+            }
+        }
     }
 
     func createShare(completion: @escaping (CKShare?, Error?) -> Void) {
