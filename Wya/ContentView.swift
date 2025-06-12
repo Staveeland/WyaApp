@@ -7,7 +7,6 @@
 import SwiftUI
 import MapKit
 import CoreLocation
-import MultipeerConnectivity
 
 // MARK: - Models
 struct Person: Identifiable, Codable {
@@ -88,7 +87,6 @@ class WyaViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var locationAlerts: [LocationAlert] = []
 
     let locationManager = CLLocationManager()
-    let multipeerSession = MultipeerSession()
 
     override init() {
         super.init()
@@ -97,9 +95,6 @@ class WyaViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         locationManager.requestWhenInUseAuthorization()
         locationManager.startUpdatingLocation()
 
-        multipeerSession.receivedLocation = { [weak self] peer, coordinate in
-            self?.updatePerson(named: peer.displayName, with: coordinate)
-        }
     }
 
     private func updatePerson(named name: String, with coordinate: CLLocationCoordinate2D) {
@@ -124,7 +119,6 @@ class WyaViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
             people.append(me)
         }
         mapRegion.center = coord
-        multipeerSession.send(location: coord)
         CloudKitLocationManager.shared.update(location: coord)
     }
 
