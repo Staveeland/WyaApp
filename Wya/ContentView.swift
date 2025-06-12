@@ -8,6 +8,7 @@ import SwiftUI
 import MapKit
 import CoreLocation
 import Combine
+import CloudKit
 
 // MARK: - Models
 struct Person: Identifiable, Codable {
