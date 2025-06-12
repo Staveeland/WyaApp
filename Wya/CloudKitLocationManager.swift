@@ -39,19 +39,28 @@ class CloudKitLocationManager: ObservableObject {
         privateDB.save(record) { _, _ in }
     }
 
-    func createShare(completion: @escaping (CKShare?) -> Void) {
-        guard let record = locationRecord else { completion(nil); return }
+    func createShare(completion: @escaping (CKShare?, Error?) -> Void) {
+        guard let record = locationRecord else {
+            let err = NSError(domain: "CloudKitLocationManager",
+                               code: 0,
+                               userInfo: [NSLocalizedDescriptionKey: "Missing location record"])
+            completion(nil, err)
+            return
+        }
+
         let share = CKShare(rootRecord: record)
         share[CKShare.SystemFieldKey.title] = "Wya Location"
+
         let modify = CKModifyRecordsOperation(recordsToSave: [record, share], recordIDsToDelete: nil)
         modify.modifyRecordsCompletionBlock = { [weak self] _, _, error in
-            if error == nil {
-                self?.share = share
-                completion(share)
+            if let error = error {
+                completion(nil, error)
             } else {
-                completion(nil)
+                self?.share = share
+                completion(share, nil)
             }
         }
+
         privateDB.add(modify)
     }
 
