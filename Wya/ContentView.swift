@@ -210,7 +210,7 @@ struct MapView: View {
                     }
                 }
             }
-            .ignoresSafeArea()
+            .ignoresSafeArea(.all, edges: .top)
             
             VStack {
                 HStack {
