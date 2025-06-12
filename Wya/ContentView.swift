@@ -125,6 +125,7 @@ class WyaViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
         mapRegion.center = coord
         multipeerSession.send(location: coord)
+        CloudKitLocationManager.shared.update(location: coord)
     }
 
     private func randomColor() -> RGBColor {

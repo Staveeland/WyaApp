@@ -27,6 +27,9 @@ struct WyaApp: App {
         WindowGroup {
             ContentView()
                 .preferredColorScheme(.dark)
+                .onOpenURL { url in
+                    CloudKitLocationManager.shared.acceptShare(from: url) { _ in }
+                }
         }
     }
 }
