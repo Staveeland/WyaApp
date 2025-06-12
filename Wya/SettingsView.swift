@@ -7,6 +7,7 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @EnvironmentObject var session: UserSession
     @State private var notificationsEnabled = true
     @State private var locationSharing = true
     @State private var batteryOptimization = false
@@ -22,11 +23,13 @@ struct SettingsView: View {
                             .foregroundColor(.blue)
                         
                         VStack(alignment: .leading) {
-                            Text("John Doe")
+                            Text(session.userName ?? "")
                                 .font(.headline)
-                            Text("john.doe@icloud.com")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                            if let id = session.userID {
+                                Text(id)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                         
                         Spacer()
@@ -81,7 +84,7 @@ struct SettingsView: View {
                 }
                 
                 Section {
-                    Button(action: {}) {
+                    Button(action: { session.signOut() }) {
                         Text("Sign Out")
                             .foregroundColor(.red)
                             .frame(maxWidth: .infinity)
