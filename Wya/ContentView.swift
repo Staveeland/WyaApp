@@ -7,6 +7,7 @@
 import SwiftUI
 import MapKit
 import CoreLocation
+import MultipeerConnectivity
 
 // MARK: - Models
 struct Person: Identifiable, Codable {
@@ -76,63 +77,60 @@ extension CLLocationCoordinate2D: Codable {
 }
 
 // MARK: - View Model
-class WyaViewModel: ObservableObject {
+class WyaViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var people: [Person] = []
     @Published var selectedPerson: Person?
     @Published var mapRegion = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
+        center: CLLocationCoordinate2D(latitude: 0, longitude: 0),
         span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
     )
     @Published var showingAddPerson = false
     @Published var locationAlerts: [LocationAlert] = []
-    
-    init() {
-        loadSampleData()
-        startLocationSimulation()
-    }
-    
-    private func loadSampleData() {
-        people = [
-            Person(
-                name: "Sarah",
-                emoji: "👩",
-                relationship: "Best Friend",
-                location: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
-                color: RGBColor(red: 1.0, green: 0.5, blue: 0.5)
-            ),
-            Person(
-                name: "Mike",
-                emoji: "👨",
-                relationship: "Roommate",
-                location: CLLocationCoordinate2D(latitude: 37.7849, longitude: -122.4094),
-                color: RGBColor(red: 0.5, green: 0.8, blue: 1.0)
-            ),
-            Person(
-                name: "Emma",
-                emoji: "👧",
-                relationship: "Sister",
-                location: CLLocationCoordinate2D(latitude: 37.7649, longitude: -122.4294),
-                color: RGBColor(red: 1.0, green: 0.8, blue: 0.4)
-            )
-        ]
-    }
-    
-    private func startLocationSimulation() {
-        Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { _ in
-            DispatchQueue.main.async {
-                for i in self.people.indices {
-                    if self.people[i].isActive {
-                        // Simulate small movement
-                        let deltaLat = Double.random(in: -0.001...0.001)
-                        let deltaLon = Double.random(in: -0.001...0.001)
-                        
-                        self.people[i].location.latitude += deltaLat
-                        self.people[i].location.longitude += deltaLon
-                        self.people[i].lastUpdated = Date()
-                    }
-                }
-            }
+
+    let locationManager = CLLocationManager()
+    let multipeerSession = MultipeerSession()
+
+    override init() {
+        super.init()
+        locationManager.delegate = self
+        locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        locationManager.requestWhenInUseAuthorization()
+        locationManager.startUpdatingLocation()
+
+        multipeerSession.receivedLocation = { [weak self] peer, coordinate in
+            self?.updatePerson(named: peer.displayName, with: coordinate)
         }
+    }
+
+    private func updatePerson(named name: String, with coordinate: CLLocationCoordinate2D) {
+        if let index = people.firstIndex(where: { $0.name == name }) {
+            people[index].location = coordinate
+            people[index].lastUpdated = Date()
+        } else {
+            let color = randomColor()
+            let newPerson = Person(name: name, emoji: "👤", relationship: "Friend", location: coordinate, color: color)
+            people.append(newPerson)
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let location = locations.last else { return }
+        let coord = location.coordinate
+        if let index = people.firstIndex(where: { $0.relationship == "Me" }) {
+            people[index].location = coord
+            people[index].lastUpdated = Date()
+        } else {
+            let me = Person(name: "Me", emoji: "🧍", relationship: "Me", location: coord, color: RGBColor(red: 0.2, green: 0.7, blue: 0.4))
+            people.append(me)
+        }
+        mapRegion.center = coord
+        multipeerSession.send(location: coord)
+    }
+
+    private func randomColor() -> RGBColor {
+        RGBColor(red: Double.random(in: 0.2...1.0),
+                 green: Double.random(in: 0.2...1.0),
+                 blue: Double.random(in: 0.2...1.0))
     }
     
     func addPerson(_ person: Person) {
@@ -404,6 +402,7 @@ struct PersonCard: View {
 struct PeopleListView: View {
     @EnvironmentObject var viewModel: WyaViewModel
     @State private var showingAddPerson = false
+    @State private var showingInvite = false
     
     var body: some View {
         NavigationView {
@@ -422,6 +421,13 @@ struct PeopleListView: View {
             .listStyle(.plain)
             .navigationTitle("Your People")
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: { showingInvite = true }) {
+                        Image(systemName: "person.badge.plus")
+                            .font(.title2)
+                    }
+                }
+
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showingAddPerson = true }) {
                         Image(systemName: "plus.circle.fill")
@@ -432,6 +438,10 @@ struct PeopleListView: View {
         }
         .sheet(isPresented: $showingAddPerson) {
             AddPersonView()
+                .environmentObject(viewModel)
+        }
+        .sheet(isPresented: $showingInvite) {
+            InviteView()
                 .environmentObject(viewModel)
         }
     }
