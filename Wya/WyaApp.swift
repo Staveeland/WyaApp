@@ -30,8 +30,10 @@ struct WyaApp: App {
                 ContentView(session: session)
                     .environmentObject(session)
                     .preferredColorScheme(.dark)
-                    .onOpenURL { url in
-                        CloudKitLocationManager.shared.acceptShare(from: url) { _ in }
+                    .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                        if let url = activity.webpageURL {
+                            CloudKitLocationManager.shared.acceptShare(from: url) { _ in }
+                        }
                     }
             } else {
                 SignInView()
