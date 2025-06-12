@@ -28,31 +28,25 @@ struct WyaApp: App {
 
     var body: some Scene {
         WindowGroup {
-            if session.isSignedIn {
-                ContentView(session: session)
-                    .environmentObject(session)
-                    .preferredColorScheme(.dark)
-                    .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
-                        if let url = activity.webpageURL {
-                            CloudKitLocationManager.shared.acceptShare(from: url) { success in
-                                if success {
-                                    inviteAlertMessage = "Invite accepted and connected!"
-                                    print("🎉 Invite accepted and connected!")
-                                } else {
-                                    inviteAlertMessage = "Failed to accept invite."
-                                    print("⚠️ Failed to accept invite.")
-                                }
-                                showInviteAlert = true
+            RootView()
+                .environmentObject(session)
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                    if let url = activity.webpageURL {
+                        CloudKitLocationManager.shared.acceptShare(from: url) { success in
+                            if success {
+                                inviteAlertMessage = "Invite accepted and connected!"
+                                print("🎉 Invite accepted and connected!")
+                            } else {
+                                inviteAlertMessage = "Failed to accept invite."
+                                print("⚠️ Failed to accept invite.")
                             }
+                            showInviteAlert = true
                         }
                     }
-                    .alert(inviteAlertMessage, isPresented: $showInviteAlert) {
-                        Button("OK", role: .cancel) {}
-                    }
-            } else {
-                SignInView()
-                    .environmentObject(session)
-            }
+                }
+                .alert(inviteAlertMessage, isPresented: $showInviteAlert) {
+                    Button("OK", role: .cancel) {}
+                }
         }
     }
 }
