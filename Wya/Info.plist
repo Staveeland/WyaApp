@@ -10,10 +10,6 @@
         </array>
         <key>NSLocationWhenInUseUsageDescription</key>
         <string>This app uses your location to display it on the map and share with invited friends.</string>
-        <key>CFBundleShortVersionString</key>
-        <string>1.0</string>
-        <key>CFBundleVersion</key>
-        <string>1</string>
         <key>CKContainerIdentifier</key>
         <string>iCloud.com.wyatracker.Wya</string>
 </dict>
