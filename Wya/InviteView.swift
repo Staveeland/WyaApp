@@ -1,12 +1,32 @@
 import SwiftUI
-import MultipeerConnectivity
+import CloudKit
 
 struct InviteView: UIViewControllerRepresentable {
-    @EnvironmentObject var viewModel: WyaViewModel
+    func makeCoordinator() -> Coordinator { Coordinator() }
 
-    func makeUIViewController(context: Context) -> MCBrowserViewController {
-        viewModel.multipeerSession.browserViewController()
+    func makeUIViewController(context: Context) -> UICloudSharingController {
+        let manager = CloudKitLocationManager.shared
+        if let share = manager.share {
+            let controller = UICloudSharingController(share: share, container: manager.container)
+            controller.delegate = context.coordinator
+            return controller
+        } else {
+            let controller = UICloudSharingController { _, preparationCompletion in
+                manager.createShare { share in
+                    preparationCompletion(share, manager.container, nil)
+                }
+            }
+            controller.delegate = context.coordinator
+            return controller
+        }
     }
 
-    func updateUIViewController(_ uiViewController: MCBrowserViewController, context: Context) {}
+    func updateUIViewController(_ controller: UICloudSharingController, context: Context) {}
+
+    class Coordinator: NSObject, UICloudSharingControllerDelegate {
+        func cloudSharingController(_ c: UICloudSharingController, failedToSaveShareWithError error: Error) {}
+        func itemTitle(for c: UICloudSharingController) -> String? { "Wya Invite" }
+        func cloudSharingControllerDidSaveShare(_ c: UICloudSharingController) {}
+        func cloudSharingControllerDidStopSharing(_ c: UICloudSharingController) {}
+    }
 }
