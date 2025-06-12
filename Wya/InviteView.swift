@@ -12,9 +12,9 @@ struct InviteView: UIViewControllerRepresentable {
             return controller
         } else {
             let controller = UICloudSharingController { _, preparationCompletion in
-                manager.createShare { share in
+                manager.createShare { share, error in
                     DispatchQueue.main.async {
-                        preparationCompletion(share, manager.container, nil)
+                        preparationCompletion(share, manager.container, error)
                     }
                 }
             }
