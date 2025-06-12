@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "7D6FXJ9R4W.com.wyatracker.Wya",
+        "paths": [ "/track/*", "/" ]
+      }
+    ]
+  }
+}
