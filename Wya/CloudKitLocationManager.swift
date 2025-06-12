@@ -56,8 +56,18 @@ class CloudKitLocationManager: ObservableObject {
     }
 
     func acceptShare(from url: URL, completion: @escaping (Bool) -> Void) {
-        container.acceptShare(with: url) { _, error in
-            completion(error == nil)
+        container.fetchShareMetadata(with: url) { [weak self] metadata, error in
+            guard let metadata = metadata, error == nil else {
+                completion(false)
+                return
+            }
+
+            let operation = CKAcceptSharesOperation(shareMetadatas: [metadata])
+            operation.acceptSharesCompletionBlock = { error in
+                completion(error == nil)
+            }
+
+            self?.container.add(operation)
         }
     }
 }
