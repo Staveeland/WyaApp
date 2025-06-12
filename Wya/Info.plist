@@ -11,6 +11,6 @@
         <key>NSLocationWhenInUseUsageDescription</key>
         <string>This app uses your location to display it on the map and share with invited friends.</string>
         <key>CKContainerIdentifier</key>
-        <string>iCloud.com.example.Wya</string>
+        <string>iCloud.com.wyatracker.Wya</string>
 </dict>
 </plist>
