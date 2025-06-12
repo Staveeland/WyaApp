@@ -12,6 +12,8 @@ class CloudKitLocationManager: ObservableObject {
     @Published private(set) var locationRecord: CKRecord?
     @Published var lastError: Error?
 
+    private var shareFetchTimer: Timer?
+
     private init() {
         container = CKContainer.default()
         privateDB = container.privateCloudDatabase
@@ -65,6 +67,27 @@ class CloudKitLocationManager: ObservableObject {
         record["lat"] = location.latitude
         record["lon"] = location.longitude
         privateDB.save(record) { _, _ in }
+    }
+
+    private func startSharedRecordUpdates(recordID: CKRecord.ID) {
+        shareFetchTimer?.invalidate()
+        shareFetchTimer = Timer.scheduledTimer(withTimeInterval: 15,
+                                               repeats: true) { [weak self] _ in
+            self?.fetchSharedRecord(recordID: recordID)
+        }
+    }
+
+    private func fetchSharedRecord(recordID: CKRecord.ID) {
+        let sharedDB = container.sharedCloudDatabase
+        sharedDB.fetch(withRecordID: recordID) { [weak self] record, error in
+            if let record = record {
+                DispatchQueue.main.async {
+                    self?.locationRecord = record
+                }
+            } else if let error = error {
+                print("Failed to fetch shared record: \(error)")
+            }
+        }
     }
 
     func prepareShare(completion: @escaping (CKShare?) -> Void) {
@@ -173,6 +196,7 @@ class CloudKitLocationManager: ObservableObject {
                         DispatchQueue.main.async {
                             self?.locationRecord = record
                         }
+                        self?.startSharedRecordUpdates(recordID: metadata.rootRecordID)
                         completion(true)
                     } else {
                         print("Failed to fetch shared record: \(String(describing: fetchError))")

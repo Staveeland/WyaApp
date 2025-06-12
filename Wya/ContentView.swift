@@ -7,10 +7,12 @@
 import SwiftUI
 import MapKit
 import CoreLocation
+import Combine
 
 // MARK: - Models
 struct Person: Identifiable, Codable {
     let id = UUID()
+    var recordName: String?
     var name: String
     var emoji: String
     var relationship: String
@@ -19,7 +21,7 @@ struct Person: Identifiable, Codable {
     var isActive: Bool
     var color: RGBColor
     
-    init(name: String, emoji: String, relationship: String, location: CLLocationCoordinate2D, isActive: Bool = true, color: RGBColor) {
+    init(name: String, emoji: String, relationship: String, location: CLLocationCoordinate2D, isActive: Bool = true, color: RGBColor, recordName: String? = nil) {
         self.name = name
         self.emoji = emoji
         self.relationship = relationship
@@ -27,6 +29,7 @@ struct Person: Identifiable, Codable {
         self.lastUpdated = Date()
         self.isActive = isActive
         self.color = color
+        self.recordName = recordName
     }
 }
 
@@ -87,6 +90,7 @@ class WyaViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var locationAlerts: [LocationAlert] = []
 
     let locationManager = CLLocationManager()
+    private var cancellables = Set<AnyCancellable>()
 
     override init() {
         super.init()
@@ -94,6 +98,13 @@ class WyaViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
         locationManager.requestWhenInUseAuthorization()
         locationManager.startUpdatingLocation()
+
+        CloudKitLocationManager.shared.$locationRecord
+            .compactMap { $0 }
+            .sink { [weak self] record in
+                self?.handleRemoteRecord(record)
+            }
+            .store(in: &cancellables)
 
     }
 
@@ -141,6 +152,27 @@ class WyaViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
             mapRegion.center = person.location
             mapRegion.span = MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
             selectedPerson = person
+        }
+    }
+
+    private func handleRemoteRecord(_ record: CKRecord) {
+        let lat = record["lat"] as? Double ?? 0
+        let lon = record["lon"] as? Double ?? 0
+        let coord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+        let recordID = record.recordID.recordName
+        let name = record.creatorUserRecordID?.recordName ?? "Friend"
+
+        if let index = people.firstIndex(where: { $0.recordName == recordID }) {
+            people[index].location = coord
+            people[index].lastUpdated = Date()
+        } else {
+            let newPerson = Person(name: name,
+                                  emoji: "👤",
+                                  relationship: "Friend",
+                                  location: coord,
+                                  color: randomColor(),
+                                  recordName: recordID)
+            people.append(newPerson)
         }
     }
 }
