@@ -152,7 +152,7 @@ class CloudKitLocationManager: ObservableObject {
     }
 
     func acceptShare(from url: URL, completion: @escaping (Bool) -> Void) {
-        print("Received Universal Link: \(url)")
+        print("Accepting share from URL: \(url)")
 
         container.fetchShareMetadata(with: url) { [weak self] metadata, error in
             if let error = error {
