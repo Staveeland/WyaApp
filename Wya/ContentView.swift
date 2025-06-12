@@ -169,13 +169,16 @@ class WyaViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
 
     private func handleRemoteRecord(_ record: CKRecord) {
+        // Ignore our own private location record to avoid duplicates
+        if record.recordID.zoneID.ownerName == CKCurrentUserDefaultName { return }
+
         let lat = record["lat"] as? Double ?? 0
         let lon = record["lon"] as? Double ?? 0
         let coord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
-        let recordID = record.recordID.recordName
+        let uniqueID = record.recordID.zoneID.ownerName + ":" + record.recordID.recordName
         let name = record.creatorUserRecordID?.recordName ?? "Friend"
 
-        if let index = people.firstIndex(where: { $0.recordName == recordID }) {
+        if let index = people.firstIndex(where: { $0.recordName == uniqueID }) {
             people[index].location = coord
             people[index].lastUpdated = Date()
         } else {
@@ -184,7 +187,7 @@ class WyaViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
                                   relationship: "Friend",
                                   location: coord,
                                   color: randomColor(),
-                                  recordName: recordID)
+                                  recordName: uniqueID)
             people.append(newPerson)
         }
         saveData()
