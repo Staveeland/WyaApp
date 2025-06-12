@@ -13,6 +13,8 @@ import UIKit
 @main
 struct WyaApp: App {
     @StateObject private var session = UserSession()
+    @State private var inviteAlertMessage = ""
+    @State private var showInviteAlert = false
     init() {
         let appearance = UITabBarAppearance()
         appearance.configureWithOpaqueBackground()
@@ -32,8 +34,20 @@ struct WyaApp: App {
                     .preferredColorScheme(.dark)
                     .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
                         if let url = activity.webpageURL {
-                            CloudKitLocationManager.shared.acceptShare(from: url) { _ in }
+                            CloudKitLocationManager.shared.acceptShare(from: url) { success in
+                                if success {
+                                    inviteAlertMessage = "Invite accepted and connected!"
+                                    print("🎉 Invite accepted and connected!")
+                                } else {
+                                    inviteAlertMessage = "Failed to accept invite."
+                                    print("⚠️ Failed to accept invite.")
+                                }
+                                showInviteAlert = true
+                            }
                         }
+                    }
+                    .alert(inviteAlertMessage, isPresented: $showInviteAlert) {
+                        Button("OK", role: .cancel) {}
                     }
             } else {
                 SignInView()
