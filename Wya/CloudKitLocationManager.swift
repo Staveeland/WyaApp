@@ -77,20 +77,12 @@ class CloudKitLocationManager: ObservableObject {
 
         let operation = CKModifyRecordsOperation(recordsToSave: [record, share], recordIDsToDelete: nil)
         operation.modifyRecordsCompletionBlock = { [weak self] _, _, error in
-            if let ckError = error as? CKError {
-                switch ckError.code {
-                case .zoneBusy:
-                    let delay = (ckError.userInfo[CKErrorRetryAfterKey] as? TimeInterval) ?? 2.0
-                    print("Zone is busy, retrying in \(delay)s...")
-                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                        self?.createShare(completion: completion)
-                    }
-                case .serverRecordChanged:
-                    print("Share already exists, fetching")
-                    self?.fetchExistingShare(for: record, completion: completion)
-                default:
-                    print("Share creation failed: \(ckError)")
-                    completion(nil, ckError)
+            if let ckError = error as? CKError, ckError.code == .zoneBusy {
+                let delay = (ckError.userInfo[CKErrorRetryAfterKey] as? TimeInterval) ?? 2.0
+                print("Zone is busy, retrying in \(delay)s...")
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                    self?.createShare(completion: completion) // Retry recursively
                 }
             } else if let error = error {
                 print("Share creation failed: \(error)")
@@ -105,25 +97,6 @@ class CloudKitLocationManager: ObservableObject {
         }
 
         privateDB.add(operation)
-    }
-
-    private func fetchExistingShare(for record: CKRecord, completion: @escaping (CKShare?, Error?) -> Void) {
-        privateDB.fetch(withRecordID: record.recordID) { [weak self] fetchedRecord, error in
-            if let fetchedRecord = fetchedRecord, let shareRef = fetchedRecord.share {
-                self?.privateDB.fetch(withRecordID: shareRef.recordID) { shareRecord, shareError in
-                    if let share = shareRecord as? CKShare {
-                        DispatchQueue.main.async {
-                            self?.share = share
-                        }
-                        completion(share, nil)
-                    } else {
-                        completion(nil, shareError)
-                    }
-                }
-            } else {
-                completion(nil, error)
-            }
-        }
     }
 
     func acceptShare(from url: URL, completion: @escaping (Bool) -> Void) {
