@@ -494,7 +494,14 @@ struct PeopleListView: View {
             .navigationTitle("Your People")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: { showingInvite = true }) {
+                    Button(action: {
+                        print("Invite tapped")
+                        CloudKitLocationManager.shared.prepareShare { share in
+                            if share != nil {
+                                showingInvite = true
+                            }
+                        }
+                    }) {
                         Image(systemName: "person.badge.plus")
                             .font(.title2)
                     }
@@ -502,7 +509,7 @@ struct PeopleListView: View {
             }
         }
         .sheet(isPresented: $showingInvite) {
-            InviteCodeView()
+            InviteView()
                 .environmentObject(viewModel)
         }
         .alert(isPresented: Binding<Bool>(
